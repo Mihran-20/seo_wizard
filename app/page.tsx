@@ -128,13 +128,13 @@ export default function Home() {
             <a href="#faq" className="hover:text-teal-400 transition-colors">FAQ</a>
           </nav>
           <div className="flex items-center gap-3">
-            <a 
-              href="https://buymeacoffee.com" 
-              target="_blank" 
-              className="text-xs font-semibold bg-amber-500 hover:bg-amber-400 text-slate-950 px-3 py-1.5 rounded-xl transition-colors shadow-md"
-            >
-              ☕ Buy Me a Coffee
-            </a>
+          <a 
+            href="https://buymeacoffee.com/mihranseo" 
+            target="_blank" 
+            rel="noopener noreferrer"
+          >
+            Buy Me a Coffee
+          </a>
           </div>
         </div>
       </header>
