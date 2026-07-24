@@ -1,11 +1,9 @@
 import { MetadataRoute } from 'next';
 
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = 'https://seo-wizard-one.vercel.app';
-
+export default function sitemap(): MetadataRoute.Sitemap {
   return [
     {
-      url: baseUrl,
+      url: 'https://seo-wizard-one.vercel.app',
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 1.0,
