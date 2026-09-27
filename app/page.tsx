@@ -2,6 +2,26 @@
 
 import { useState } from "react";
 
+type AnalyticsParams = Record<string, string | number | boolean>;
+
+declare global {
+  interface Window {
+    gtag?: (
+      command: "event",
+      eventName: string,
+      params?: AnalyticsParams
+    ) => void;
+  }
+}
+
+const trackEvent = (
+  eventName: string,
+  params: AnalyticsParams = {}
+) => {
+  if (typeof window !== "undefined" && typeof window.gtag === "function") {
+    window.gtag("event", eventName, params);
+  }
+};
 export default function Home() {
   const [image, setImage] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -9,15 +29,12 @@ export default function Home() {
   const [webpBlob, setWebpBlob] = useState<Blob | null>(null);
   const [originalSize, setOriginalSize] = useState<number>(0);
   const [webpSize, setWebpSize] = useState<number>(0);
-  
   const [results, setResults] = useState<{
     descriptive: string;
     keywordOptimized: string;
     creative: string;
   } | null>(null);
-
   const [openFaq, setOpenFaq] = useState<number | null>(null);
-
   const convertToWebP = (file: File): Promise<{ blob: Blob; dataUrl: string }> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -49,10 +66,13 @@ export default function Home() {
       reader.onerror = (error) => reject(error);
     });
   };
-
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      trackEvent("image_upload", {
+        file_type: file.type || "unknown",
+        file_size_kb: Math.round(file.size / 1024),
+      });
       setImage(file);
       setOriginalSize(file.size);
       setResults(null);
@@ -61,13 +81,23 @@ export default function Home() {
         setWebpBlob(blob);
         setWebpSize(blob.size);
         setPreviewUrl(dataUrl);
+        trackEvent("webp_conversion", {
+          original_size_kb: Math.round(file.size / 1024),
+          webp_size_kb: Math.round(blob.size / 1024),
+          savings_percent: Math.max(
+            0,
+            Math.round(((file.size - blob.size) / file.size) * 100)
+          ),
+        });
       } catch (err) {
         console.error("WebP conversion error:", err);
+        trackEvent("webp_conversion_error", {
+          file_type: file.type || "unknown",
+        });
         setPreviewUrl(URL.createObjectURL(file));
       }
     }
   };
-
   const convertToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -76,7 +106,6 @@ export default function Home() {
       reader.onerror = (error) => reject(error);
     });
   };
-
   const generateAltText = async () => {
     if (!image) return;
     setLoading(true);
@@ -90,14 +119,19 @@ export default function Home() {
       if (!response.ok) throw new Error("Failed to generate alt text");
       const data = await response.json();
       setResults(data);
+      trackEvent("alt_text_generated", {
+        success: true,
+      });
     } catch (error) {
       console.error(error);
+      trackEvent("alt_text_error", {
+        success: false,
+      });
       alert("Something went wrong. Please check your API connection.");
     } finally {
       setLoading(false);
     }
   };
-
   const downloadWebP = () => {
     if (!webpBlob || !image) return;
     const url = URL.createObjectURL(webpBlob);
@@ -107,16 +141,18 @@ export default function Home() {
     a.download = `${originalName}_optimized.webp`;
     document.body.appendChild(a);
     a.click();
+    trackEvent("webp_download", {
+      file_size_kb: Math.round(webpBlob.size / 1024),
+      savings_percent: compressionSavings,
+    });
     document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
-
-  const compressionSavings = originalSize && webpSize 
-    ? Math.round(((originalSize - webpSize) / originalSize) * 100) 
+  const compressionSavings = originalSize && webpSize
+    ? Math.round(((originalSize - webpSize) / originalSize) * 100)
     : 0;
-
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 antialiased selection:bg-teal-500/30 selection:text-teal-200">
-      
       <header className="border-b border-slate-900 bg-slate-950/70 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2 font-black text-xl tracking-tight bg-gradient-to-r from-teal-400 to-blue-500 bg-clip-text text-transparent">
@@ -128,19 +164,17 @@ export default function Home() {
             <a href="#faq" className="hover:text-teal-400 transition-colors">FAQ</a>
           </nav>
           <div className="flex items-center gap-3">
-          <a 
-            href="https://buymeacoffee.com/mihranseo" 
-            target="_blank" 
-            rel="noopener noreferrer"
-          >
-            Buy Me a Coffee
-          </a>
+            <a
+              href="https://buymeacoffee.com/mihranseo"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Buy Me a Coffee
+            </a>
           </div>
         </div>
       </header>
-
       <main id="tool" className="flex-1 max-w-6xl mx-auto px-6 py-12 w-full flex flex-col items-center justify-center">
-        
         <div className="text-center max-w-2xl mb-12 flex flex-col items-center">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-900 border border-slate-800 text-slate-400 mb-4">
             <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse"></span>
@@ -153,16 +187,13 @@ export default function Home() {
             Optimize your images instantly. Reduce file sizes with WebP and generate context-aware SEO Alt texts to rank higher on Google.
           </p>
         </div>
-
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 w-full items-start bg-slate-900/20 border border-slate-900 rounded-3xl p-4 md:p-8 backdrop-blur-sm shadow-2xl">
-          
           <div className="lg:col-span-5 flex flex-col items-center justify-center border border-dashed border-slate-800 rounded-2xl p-6 bg-slate-950/60 hover:border-teal-500/50 transition-all duration-300 min-h-[340px] w-full">
             {previewUrl ? (
               <div className="w-full flex flex-col items-center gap-5">
                 <div className="relative rounded-xl overflow-hidden border border-slate-800 max-h-60 w-full flex items-center justify-center bg-slate-950">
                   <img src={previewUrl} alt="Preview" className="max-h-60 object-contain p-2" />
                 </div>
-                
                 {webpSize > 0 && (
                   <div className="w-full bg-slate-950 border border-slate-900 rounded-xl p-3 text-xs flex justify-around text-center">
                     <div>
@@ -181,7 +212,6 @@ export default function Home() {
                     </div>
                   </div>
                 )}
-
                 <div className="flex flex-col gap-2 w-full">
                   <div className="flex gap-2 w-full">
                     <button
@@ -204,7 +234,6 @@ export default function Home() {
                       {loading ? "Generating..." : "Generate Alt Text"}
                     </button>
                   </div>
-                  
                   <button
                     onClick={downloadWebP}
                     className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-bold text-xs transition-colors text-white shadow-lg shadow-emerald-600/15 flex items-center justify-center gap-2"
@@ -226,14 +255,12 @@ export default function Home() {
               </label>
             )}
           </div>
-
           <div className="lg:col-span-7 flex flex-col justify-between bg-slate-950/40 border border-slate-900 rounded-2xl p-6 min-h-[340px] w-full">
             <div>
               <h2 className="text-base font-bold text-slate-200 tracking-tight flex items-center gap-2 mb-5">
                 <span className="w-1.5 h-3 rounded-full bg-gradient-to-b from-teal-400 to-blue-500"></span>
                 Generated SEO Alt Texts
               </h2>
-
               {loading ? (
                 <div className="flex flex-col items-center justify-center py-20">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-500"></div>
@@ -253,7 +280,12 @@ export default function Home() {
                       <div className="mt-2 p-3 bg-slate-950 border border-slate-900 rounded-xl flex items-center justify-between gap-3 text-xs group-hover/item:border-slate-800 transition-colors">
                         <span className="text-slate-300 font-medium select-all leading-relaxed">{item.val}</span>
                         <button
-                          onClick={() => navigator.clipboard.writeText(item.val)}
+                          onClick={() => {
+                            navigator.clipboard.writeText(item.val);
+                            trackEvent("alt_text_copy", {
+                              alt_type: item.label,
+                            });
+                          }}
                           className="text-[10px] font-bold bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:text-white text-slate-400 px-3 py-1.5 rounded-lg transition-colors shrink-0"
                         >
                           Copy
@@ -272,18 +304,14 @@ export default function Home() {
               )}
             </div>
           </div>
-
         </div>
-
         <div className="w-full mt-8 p-4 bg-slate-900/10 border border-slate-900 rounded-xl text-center">
           <span className="text-[10px] font-bold uppercase tracking-widest text-slate-600 block mb-1">Sponsored Advertisement</span>
           <div className="h-20 flex items-center justify-center text-xs text-slate-500 bg-slate-950/40 rounded-lg border border-slate-900 border-dashed">
             Ad slot placeholder — income channel active after AdSense integration
           </div>
         </div>
-
       </main>
-
       <section id="features" className="border-t border-slate-900 bg-slate-950/40 py-16">
         <div className="max-w-6xl mx-auto px-6">
           <div className="text-center mb-12">
@@ -309,7 +337,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
       <section id="faq" className="border-t border-slate-900 bg-slate-950 py-16">
         <div className="max-w-3xl mx-auto px-6">
           <div className="text-center mb-10">
@@ -332,7 +359,7 @@ export default function Home() {
               }
             ].map((faq, index) => (
               <div key={index} className="border border-slate-900 rounded-xl bg-slate-900/10 overflow-hidden">
-                <button 
+                <button
                   onClick={() => setOpenFaq(openFaq === index ? null : index)}
                   className="w-full p-4 text-left font-bold text-xs text-slate-300 hover:text-white flex justify-between items-center transition-colors"
                 >
@@ -349,7 +376,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
       <footer className="border-t border-slate-900 bg-slate-950 py-8 text-center text-xs text-slate-600 font-medium">
         <div className="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p>© {new Date().getFullYear()} SEO Wizard. All rights reserved.</p>
@@ -358,7 +384,6 @@ export default function Home() {
           </p>
         </div>
       </footer>
-
     </div>
   );
 }
