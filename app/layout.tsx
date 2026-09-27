@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,7 +15,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "AI Alt Text Generator & Image WebP Converter",
-  description: "Free tool to compress images to WebP and automatically generate SEO-optimized alt texts using Gemini AI.",
+  description:
+    "Free tool to compress images to WebP and automatically generate SEO-optimized alt texts using Gemini AI.",
   verification: {
     google: "oc-AUvWhQOYqie2epDCXtIr1tavr1DAxTFO8WnFateg",
   },
@@ -27,12 +29,26 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full">
-      <head>
-        {/* Եթե ուզում ես հենց meta թեգով, ապա այն պետք է լինի head-ի մեջ */}
-        <meta name="google-site-verification" content="oc-AUvWhQOYqie2epDCXtIr1tavr1DAxTFO8WnFateg" />
-      </head>
-      <body className={`${geistSans.variable} ${geistMono.variable} min-h-full flex flex-col bg-slate-950 text-slate-50 antialiased`}>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} min-h-full flex flex-col bg-slate-950 text-slate-50 antialiased`}
+      >
         {children}
+
+        {/* Google Analytics */}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-HJHHG8TKP0"
+          strategy="afterInteractive"
+        />
+
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+
+            gtag('config', 'G-HJHHG8TKP0');
+          `}
+        </Script>
       </body>
     </html>
   );
